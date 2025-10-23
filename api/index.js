@@ -5,6 +5,7 @@ const express = require('express');
 const cors = require('cors'); // Aún lo usamos para el manejo de OPTIONS
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
+const { testConnection } = require('./db');
 
 // Import routes
 const catalogosRoutes = require('./routes/catalogos.routes');
@@ -47,6 +48,50 @@ apiRouter.use(usuariosRoutes);
 app.use('/api', apiRouter);
 
 // Start server
-app.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
+async function startServer() {
+  console.log('🚀 Iniciando servidor CAB API...\n');
+  
+  // Verificar conexión a la base de datos
+  const dbConnected = await testConnection();
+  
+  if (!dbConnected) {
+    console.log('\n⚠️  ADVERTENCIA: El servidor se iniciará sin conexión a la base de datos');
+    console.log('   Las rutas que requieren BD no funcionarán correctamente');
+    console.log('   Verifica la configuración en el archivo .env\n');
+  }
+  
+  // Iniciar el servidor
+  app.listen(port, () => {
+    console.log('\n🎉 Servidor CAB API iniciado exitosamente');
+    console.log(`🌐 URL: http://localhost:${port}`);
+    console.log(`📚 Documentación: http://localhost:${port}/api-docs`);
+    console.log(`🔧 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+    
+    if (dbConnected) {
+      console.log('🔗 Estado BD: Conectada ✅');
+    } else {
+      console.log('🔗 Estado BD: Desconectada ❌');
+    }
+    
+    console.log('\n📋 Endpoints disponibles:');
+    console.log('   GET  /api/departamentos');
+    console.log('   GET  /api/municipios');
+    console.log('   GET  /api/comunidades');
+    console.log('   POST /api/auth/login');
+    console.log('   GET  /api/encuestas (requiere auth)');
+    console.log('   POST /api/respuestas (requiere auth)');
+    console.log('\n✨ ¡Listo para recibir peticiones!');
+  });
+}
+
+// Manejar errores no capturados
+process.on('unhandledRejection', (err) => {
+  console.error('❌ Error no manejado:', err.message);
 });
+
+process.on('uncaughtException', (err) => {
+  console.error('❌ Excepción no capturada:', err.message);
+  process.exit(1);
+});
+
+startServer();

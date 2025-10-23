@@ -1,6 +1,7 @@
 
 const { Router } = require('express');
 const { createRespuesta } = require('../controllers/respuestas.controller');
+const { verifyToken, requireAuthenticatedUser } = require('../middleware/auth');
 
 const router = Router();
 
@@ -10,6 +11,8 @@ const router = Router();
  *   post:
  *     summary: Guarda una encuesta completada
  *     tags: [Respuestas]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:

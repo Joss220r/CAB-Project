@@ -3,10 +3,16 @@ const { getConnection } = require('../db');
 const sql = require('mssql');
 
 const createRespuesta = async (req, res) => {
-  const { boleta_num, id_encuesta, id_comunidad, id_usuario, detalles } = req.body;
+  const { boleta_num, id_encuesta, id_comunidad, detalles } = req.body;
 
-  if (!boleta_num || !id_encuesta || !id_comunidad || !id_usuario || !detalles || !Array.isArray(detalles)) {
-    return res.status(400).json({ msg: 'Faltan datos requeridos. Se necesita: boleta_num, id_encuesta, id_comunidad, id_usuario y un array de detalles.' });
+  if (!boleta_num || !id_encuesta || !id_comunidad || !detalles || !Array.isArray(detalles)) {
+    return res.status(400).json({ msg: 'Faltan datos requeridos. Se necesita: boleta_num, id_encuesta, id_comunidad y un array de detalles.' });
+  }
+
+  // Tomar el usuario autenticado del token, no del body
+  const id_usuario = req.user?.id_usuario;
+  if (!id_usuario) {
+    return res.status(401).json({ msg: 'Usuario no autenticado' });
   }
 
   const pool = await getConnection();

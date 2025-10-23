@@ -1,9 +1,7 @@
 
 const { Router } = require('express');
-
-
-
 const { createEncuesta, getEncuestas, getEncuestaById, updateEncuestaEstado } = require('../controllers/encuestas.controller');
+const { verifyToken, requireAdmin, requireAuthenticatedUser } = require('../middleware/auth');
 
 const router = Router();
 
@@ -19,7 +17,7 @@ const router = Router();
  *       500:
  *         description: Error en el servidor
  */
-router.get('/encuestas', getEncuestas);
+router.get('/encuestas', verifyToken, requireAuthenticatedUser, getEncuestas);
 
 /**
  * @swagger
@@ -27,6 +25,8 @@ router.get('/encuestas', getEncuestas);
  *   get:
  *     summary: Obtiene el detalle completo de una encuesta, incluyendo preguntas y opciones
  *     tags: [Encuestas]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -42,12 +42,14 @@ router.get('/encuestas', getEncuestas);
  *       500:
  *         description: Error en el servidor
  */
-router.get('/encuestas/:id', getEncuestaById);
+router.get('/encuestas/:id', verifyToken, requireAuthenticatedUser, getEncuestaById);
 
 /**
  * @swagger
  * /encuestas/{id}/estado:
  *   put:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Actualiza el estado de una encuesta (Activa/Inactiva)
  *     tags: [Encuestas]
  *     parameters:
@@ -78,14 +80,16 @@ router.get('/encuestas/:id', getEncuestaById);
  *       500:
  *         description: Error en el servidor
  */
-router.put('/encuestas/:id/estado', updateEncuestaEstado);
+router.put('/encuestas/:id/estado', verifyToken, requireAdmin, updateEncuestaEstado);
 
 /**
  * @swagger
  * /encuestas:
  *   post:
- *     summary: Crea una nueva encuesta con sus preguntas y opciones
+ *     summary: Crea una nueva encuesta con sus preguntas y opciones (Solo Admin)
  *     tags: [Encuestas]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -100,7 +104,7 @@ router.put('/encuestas/:id/estado', updateEncuestaEstado);
  *       500:
  *         description: Error en el servidor al procesar la transacción
  */
-router.post('/encuestas', createEncuesta);
+router.post('/encuestas', verifyToken, requireAdmin, createEncuesta);
 
 module.exports = router;
 

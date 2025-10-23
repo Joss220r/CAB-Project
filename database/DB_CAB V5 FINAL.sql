@@ -1,5 +1,5 @@
 /* =====================================================================
-   DB_CAB � Esquema de Encuestas 
+   DB_CAB · Esquema de Encuestas 
    ===================================================================== */
 
 -- (1) RESETEO SEGURO (opcional): Elimina y crea limpia la BD
@@ -25,10 +25,10 @@ GO
 
 
 /* =====================================================================
-   (3) CAT�LOGOS BASE
+   (3) CATÁLOGOS BASE
    ===================================================================== */
 
--- 3.1 Cat�logo de Locks para cat�logos
+-- 3.1 Catálogo de Locks para catálogos
 IF OBJECT_ID('cab.catalogo_lock','U') IS NOT NULL DROP TABLE cab.catalogo_lock;
 CREATE TABLE cab.catalogo_lock (
   tabla          VARCHAR(40)  NOT NULL PRIMARY KEY,                          -- 'departamentos' | 'municipios'
@@ -41,7 +41,7 @@ GO
 -- 3.2 Departamentos (PK manual 1..22)
 IF OBJECT_ID('cab.departamentos','U') IS NOT NULL DROP TABLE cab.departamentos;
 CREATE TABLE cab.departamentos (
-  id_departamento  SMALLINT     NOT NULL PRIMARY KEY,                         -- PK manual (c�digos oficiales)
+  id_departamento  SMALLINT     NOT NULL PRIMARY KEY,                         -- PK manual (códigos oficiales)
   nombre           VARCHAR(80)  NOT NULL CONSTRAINT UQ_depto_nombre UNIQUE,
   CONSTRAINT CK_depto_nombre_notblank CHECK (LEN(LTRIM(RTRIM(nombre))) > 0)
 );
@@ -85,7 +85,7 @@ CREATE TABLE cab.grupos_focales (
 );
 GO
 
--- 3.6 Categor�as y subcategor�as de preguntas
+-- 3.6 Categorías y subcategorías de preguntas
 IF OBJECT_ID('cab.subcategorias_preguntas','U') IS NOT NULL DROP TABLE cab.subcategorias_preguntas;
 IF OBJECT_ID('cab.categorias_preguntas','U') IS NOT NULL DROP TABLE cab.categorias_preguntas;
 
@@ -106,7 +106,7 @@ GO
 
 
 /* =====================================================================
-   (4) TRIGGERS de control para cat�logos (departamentos/municipios)
+   (4) TRIGGERS de control para catálogos (departamentos/municipios)
    ===================================================================== */
 
 -- Helpers: asegurar filas base en catalogo_lock
@@ -136,7 +136,7 @@ BEGIN
   DECLARE @total INT; SELECT @total = COUNT(*) FROM cab.departamentos WITH (UPDLOCK, HOLDLOCK);
   IF @max IS NOT NULL AND @total > @max
   BEGIN
-    DECLARE @msg NVARCHAR(200) = FORMATMESSAGE(N'Se super� el m�ximo permitido de DEPARTAMENTOS (%d).', @max);
+    DECLARE @msg NVARCHAR(200) = FORMATMESSAGE(N'Se superó el máximo permitido de DEPARTAMENTOS (%d).', @max);
     ROLLBACK; THROW 51011, @msg, 1;
   END;
 
@@ -202,7 +202,7 @@ BEGIN
   DECLARE @total INT; SELECT @total = COUNT(*) FROM cab.municipios WITH (UPDLOCK, HOLDLOCK);
   IF @max IS NOT NULL AND @total > @max
   BEGIN
-    DECLARE @msg NVARCHAR(200) = FORMATMESSAGE(N'Se super� el m�ximo permitido de MUNICIPIOS (%d).', @max);
+    DECLARE @msg NVARCHAR(200) = FORMATMESSAGE(N'Se superó el máximo permitido de MUNICIPIOS (%d).', @max);
     ROLLBACK; THROW 51021, @msg, 1;
   END;
 
@@ -265,6 +265,7 @@ CREATE TABLE cab.usuarios (
 );
 GO
 
+-- Agregado nuevamente 
 -- Tokens JWT emitidos (auditoría y revocación opcional)
 IF OBJECT_ID('cab.tokens_jwt','U') IS NOT NULL DROP TABLE cab.tokens_jwt;
 CREATE TABLE cab.tokens_jwt (
@@ -295,6 +296,8 @@ CREATE TABLE cab.tokens_revocados (
 GO
 CREATE INDEX IX_tokens_revocados_jti ON cab.tokens_revocados(jti);
 GO
+
+
 
 -- Encuestas
 IF OBJECT_ID('cab.encuestas','U') IS NOT NULL DROP TABLE cab.encuestas;
@@ -371,7 +374,7 @@ CREATE TABLE cab.respuestas (
                    CONSTRAINT CK_respuestas_estado CHECK (estado IN ('Enviada','Anulada'))
                    CONSTRAINT DF_respuestas_estado DEFAULT ('Enviada'),
   anulada_motivo   VARCHAR(300)  NULL,
-  anulada_por      BIGINT        NULL,   -- (FK l�gica a cab.usuarios)
+  anulada_por      BIGINT        NULL,   -- (FK lógica a cab.usuarios)
   anulada_en       DATETIME2(0)  NULL,
   CONSTRAINT UQ_respuestas_boleta UNIQUE (boleta_num)
 );
@@ -380,7 +383,7 @@ CREATE INDEX IX_respuestas_encuesta_aplicada  ON cab.respuestas (id_encuesta, ap
 CREATE INDEX IX_respuestas_comunidad_aplicada ON cab.respuestas (id_comunidad, aplicada_en);
 GO
 
--- Bit�cora de respuestas
+-- Bitácora de respuestas
 IF OBJECT_ID('cab.bitacora_respuestas','U') IS NOT NULL DROP TABLE cab.bitacora_respuestas;
 CREATE TABLE cab.bitacora_respuestas (
   id_bitacora      BIGINT        NOT NULL IDENTITY(1,1) PRIMARY KEY,
@@ -398,7 +401,7 @@ GO
    (6) TRIGGERS de Respuestas (encabezado)
    ===================================================================== */
 
--- Transiciones de estado v�lidas
+-- Transiciones de estado válidas
 IF OBJECT_ID('cab.tg_respuestas_transicion','TR') IS NOT NULL DROP TRIGGER cab.tg_respuestas_transicion;
 GO
 CREATE TRIGGER cab.tg_respuestas_transicion
@@ -413,17 +416,17 @@ BEGIN
     SELECT 1
     FROM inserted i
     JOIN deleted  d ON d.id_respuesta = i.id_respuesta
-    WHERE (d.estado = 'Anulada' AND i.estado = 'Enviada')  -- No se permite volver atr�s
+    WHERE (d.estado = 'Anulada' AND i.estado = 'Enviada')  -- No se permite volver atrás
        OR (d.estado NOT IN ('Enviada','Anulada') OR i.estado NOT IN ('Enviada','Anulada'))
   )
   BEGIN
-    RAISERROR('Transici�n de estado no permitida.', 16, 1);
+    RAISERROR('Transición de estado no permitida.', 16, 1);
     ROLLBACK TRANSACTION; RETURN;
   END;
 END;
 GO
 
--- Prohibir edici�n de encabezado si ya estaba ANULADA
+-- Prohibir edición de encabezado si ya estaba ANULADA
 IF OBJECT_ID('cab.tg_respuestas_noedit_anulada','TR') IS NOT NULL DROP TRIGGER cab.tg_respuestas_noedit_anulada;
 GO
 CREATE TRIGGER cab.tg_respuestas_noedit_anulada
@@ -452,7 +455,7 @@ BEGIN
 END;
 GO
 
--- Bit�cora: insertar CREADA
+-- Bitácora: insertar CREADA
 IF OBJECT_ID('cab.tg_respuestas_ins_bitacora','TR') IS NOT NULL DROP TRIGGER cab.tg_respuestas_ins_bitacora;
 GO
 CREATE TRIGGER cab.tg_respuestas_ins_bitacora
@@ -469,7 +472,7 @@ BEGIN
 END;
 GO
 
--- Bit�cora: marcar ANULADA
+-- Bitácora: marcar ANULADA
 IF OBJECT_ID('cab.tg_respuestas_anula_bitacora','TR') IS NOT NULL DROP TRIGGER cab.tg_respuestas_anula_bitacora;
 GO
 CREATE TRIGGER cab.tg_respuestas_anula_bitacora
@@ -492,7 +495,7 @@ GO
 
 
 /* =====================================================================
-   (7) RESPUESTAS DETALLE + TRIGGERS de normalizaci�n
+   (7) RESPUESTAS DETALLE + TRIGGERS de normalización
    ===================================================================== */
 
 IF OBJECT_ID('cab.respuestas_detalle','U') IS NOT NULL DROP TABLE cab.respuestas_detalle;
@@ -601,7 +604,7 @@ BEGIN
 END;
 GO
 
--- BLOQUEO de cambios en detalle si la respuesta est� ANULADA
+-- BLOQUEO de cambios en detalle si la respuesta está ANULADA
 IF OBJECT_ID('cab.tg_rdet_bloqueo_anulada','TR') IS NOT NULL DROP TRIGGER cab.tg_rdet_bloqueo_anulada;
 GO
 CREATE TRIGGER cab.tg_rdet_bloqueo_anulada
@@ -632,7 +635,7 @@ GO
    (8) VISTAS Y PROCEDIMIENTOS
    ===================================================================== */
 
--- Vista: solo respuestas v�lidas (Enviada)
+-- Vista: solo respuestas válidas (Enviada)
 IF OBJECT_ID('cab.vw_respuestas_validas','V') IS NOT NULL DROP VIEW cab.vw_respuestas_validas;
 GO
 CREATE VIEW cab.vw_respuestas_validas AS
@@ -672,11 +675,11 @@ BEGIN
   WHERE id_respuesta = @id_respuesta AND estado = 'Enviada';
 
   IF @@ROWCOUNT = 0
-    RAISERROR('No se pudo anular: la boleta no existe o ya est� anulada.', 16, 1);
+    RAISERROR('No se pudo anular: la boleta no existe o ya está anulada.', 16, 1);
 END;
 GO
 
--- SP: promedios de una encuesta (global + por categor�a)
+-- SP: promedios de una encuesta (global + por categoría)
 IF OBJECT_ID('cab.sp_promedios_encuesta','P') IS NOT NULL DROP PROCEDURE cab.sp_promedios_encuesta;
 GO
 CREATE PROCEDURE cab.sp_promedios_encuesta
@@ -697,11 +700,11 @@ BEGIN
   WHERE e.id_encuesta = @id_encuesta AND r.id_encuesta = e.id_encuesta AND r.estado = 'Enviada'
   GROUP BY e.id_encuesta, e.titulo;
 
-  -- Por categor�a
+  -- Por categoría
   SELECT
     e.id_encuesta,
     cp.id_categoria_pregunta,
-    COALESCE(cp.nombre, 'Sin categor�a') AS categoria,
+    COALESCE(cp.nombre, 'Sin categoría') AS categoria,
     CAST(AVG(rd.puntaje_0a10) AS DECIMAL(5,2)) AS promedio_categoria_0a10
   FROM cab.encuestas e
   JOIN cab.preguntas p ON p.id_encuesta = e.id_encuesta
@@ -735,158 +738,10 @@ END;
 GO
 
 
-/* =====================================================================
-   (9) SEMILLAS IDEMPOTENTES (puedes re-ejecutar sin errores)
-   ===================================================================== */
-SET NOCOUNT ON;
-SET XACT_ABORT ON;
 
-BEGIN TRAN;
+-- Usuario admin con contraseña: admin123
+IF NOT EXISTS (SELECT 1 FROM cab.usuarios WHERE correo='admin@cab.local')
+  INSERT INTO cab.usuarios (nombre,correo,pass_hash,rol,activo)
+  VALUES ('Admin CAB','admin@cab.local','$2b$10$m6M61BhGKEK7LnWP6YU8Re.z2vDyNBebwulE7D7zfiCb/1ButMKvK','Admin',1);
 
-select * from cab.departamentos
-
--- 9.1 Departamentos (1..22)
-;WITH v(id, nombre) AS (
-  SELECT 1,'Guatemala' UNION ALL
-  SELECT 2,'El Progreso' UNION ALL
-  SELECT 3,'Sacatep�quez' UNION ALL
-  SELECT 4,'Chimaltenango' UNION ALL
-  SELECT 5,'Escuintla' UNION ALL
-  SELECT 6,'Santa Rosa' UNION ALL
-  SELECT 7,'Solol�' UNION ALL
-  SELECT 8,'Totonicap�n' UNION ALL
-  SELECT 9,'Quetzaltenango' UNION ALL
-  SELECT 10,'Suchitep�quez' UNION ALL
-  SELECT 11,'Retalhuleu' UNION ALL
-  SELECT 12,'San Marcos' UNION ALL
-  SELECT 13,'Huehuetenango' UNION ALL
-  SELECT 14,'Quich�' UNION ALL
-  SELECT 15,'Baja Verapaz' UNION ALL
-  SELECT 16,'Alta Verapaz' UNION ALL
-  SELECT 17,'Pet�n' UNION ALL
-  SELECT 18,'Izabal' UNION ALL
-  SELECT 19,'Zacapa' UNION ALL
-  SELECT 20,'Chiquimula' UNION ALL
-  SELECT 21,'Jalapa' UNION ALL
-  SELECT 22,'Jutiapa'
-)
-INSERT INTO cab.departamentos (id_departamento, nombre)
-SELECT id, nombre
-FROM v
-WHERE NOT EXISTS (SELECT 1 FROM cab.departamentos d WHERE d.id_departamento = v.id OR d.nombre = v.nombre);
-
--- 9.2 Municipio + Comunidad demo (El Progreso / San Cristobal / Chingoarriba)
-DECLARE @id_depto SMALLINT = (SELECT id_departamento FROM cab.departamentos WHERE nombre='El Progreso');
-IF NOT EXISTS (SELECT 1 FROM cab.municipios WHERE id_departamento=@id_depto AND nombre='San Cristobal')
-  INSERT INTO cab.municipios (id_departamento, nombre) VALUES (@id_depto, 'San Cristobal');
-
-DECLARE @id_muni INT = (SELECT id_municipio FROM cab.municipios WHERE id_departamento=@id_depto AND nombre='San Cristobal');
-IF NOT EXISTS (SELECT 1 FROM cab.comunidades WHERE id_municipio=@id_muni AND nombre='Chingoarriba')
-  INSERT INTO cab.comunidades (id_municipio, nombre, area) VALUES (@id_muni, 'Chingoarriba', 'Rural');
-
-DECLARE @id_comu INT = (SELECT id_comunidad FROM cab.comunidades WHERE id_municipio=@id_muni AND nombre='Chingoarriba');
-
--- 9.3 Grupos focales
-INSERT INTO cab.grupos_focales (nombre)
-SELECT v.nombre
-FROM (VALUES ('Embarazadas'), ('0-6m'), ('6-24m')) AS v(nombre)
-WHERE NOT EXISTS (SELECT 1 FROM cab.grupos_focales g WHERE g.nombre = v.nombre);
-
-DECLARE @id_gf_emb TINYINT = (SELECT id_grupo_focal FROM cab.grupos_focales WHERE nombre='Embarazadas');
-
--- 9.4 Categor�as
-INSERT INTO cab.categorias_preguntas (nombre)
-SELECT v.nombre
-FROM (VALUES
- ('Higiene b�sica'),
- ('Agua y Enfermedades'),
- ('Purificaci�n del agua'),
- ('Saneamiento ambiental'),
- ('Atenci�n prenatal'),
- ('Discapacidad')
-) AS v(nombre)
-WHERE NOT EXISTS (SELECT 1 FROM cab.categorias_preguntas c WHERE c.nombre = v.nombre);
-
--- 9.5 Usuario admin (rol con may�scula v�lida por CHECK)
-IF NOT EXISTS (SELECT 1 FROM cab.usuarios WHERE correo='yairmorales267@gmail.com')
-  INSERT INTO cab.usuarios (nombre, correo, pass_hash, rol, activo)
-  VALUES ('Yair Morales','yairmorales267@gmail.com','admin123','Admin',1);
-
-DECLARE @id_user BIGINT = (SELECT id_usuario FROM cab.usuarios WHERE correo='yairmorales267@gmail.com');
-
--- 9.6 Encuesta demo (estado correcto por CHECK)
-IF NOT EXISTS (SELECT 1 FROM cab.encuestas WHERE titulo='Encuesta Embarazadas' AND version='v1.0')
-  INSERT INTO cab.encuestas (titulo, descripcion, id_grupo_focal, version, estado)
-  VALUES ('Encuesta Embarazadas', 'Encuesta para toda mujer embarazada', @id_gf_emb, 'v1.0', 'Activa');
-
-DECLARE @id_enc BIGINT = (SELECT id_encuesta FROM cab.encuestas WHERE titulo='Encuesta Embarazadas' AND version='v1.0');
-
--- 9.7 Preguntas demo
-IF NOT EXISTS (SELECT 1 FROM cab.preguntas WHERE id_encuesta=@id_enc AND orden=1)
-  INSERT INTO cab.preguntas (id_encuesta, id_categoria_pregunta, texto, tipo, requerida, orden, puntaje_maximo)
-  VALUES (
-    @id_enc,
-    (SELECT TOP 1 id_categoria_pregunta FROM cab.categorias_preguntas WHERE nombre='Higiene b�sica'),
-    N'�Cu�ndo hay que lavarse las manos?', 'OpcionMultiple', 1, 1, 8
-  );
-DECLARE @id_p1 BIGINT = (SELECT id_pregunta FROM cab.preguntas WHERE id_encuesta=@id_enc AND orden=1);
-
-IF NOT EXISTS (SELECT 1 FROM cab.preguntas WHERE id_encuesta=@id_enc AND orden=2)
-  INSERT INTO cab.preguntas (id_encuesta, id_categoria_pregunta, texto, tipo, requerida, orden, puntaje_maximo)
-  VALUES (
-    @id_enc,
-    (SELECT TOP 1 id_categoria_pregunta FROM cab.categorias_preguntas WHERE nombre='Higiene b�sica'),
-    N'�Sabe que una persona puede enfermarse si bebe agua sin purificar?', 'OpcionUnica', 1, 2, 100
-  );
-DECLARE @id_p2 BIGINT = (SELECT id_pregunta FROM cab.preguntas WHERE id_encuesta=@id_enc AND orden=2);
-
-IF NOT EXISTS (SELECT 1 FROM cab.preguntas WHERE id_encuesta=@id_enc AND orden=3)
-  INSERT INTO cab.preguntas (id_encuesta, id_categoria_pregunta, texto, tipo, requerida, orden, puntaje_maximo)
-  VALUES (@id_enc, (SELECT TOP 1 id_categoria_pregunta FROM cab.categorias_preguntas WHERE nombre='Higiene b�sica'),
-          N'�Cu�les enfermedades conoce?', 'Texto', 0, 3, 0);
-DECLARE @id_p3 BIGINT = (SELECT id_pregunta FROM cab.preguntas WHERE id_encuesta=@id_enc AND orden=3);
-
--- 9.8 Opciones demo
-IF NOT EXISTS (SELECT 1 FROM cab.preguntas_opciones WHERE id_pregunta=@id_p1 AND orden=1)
-  INSERT INTO cab.preguntas_opciones (id_pregunta, etiqueta, valor, puntos, orden)
-  VALUES (@id_p1, 'Antes de comer', 'antes', 100, 1);
-IF NOT EXISTS (SELECT 1 FROM cab.preguntas_opciones WHERE id_pregunta=@id_p1 AND orden=2)
-  INSERT INTO cab.preguntas_opciones (id_pregunta, etiqueta, valor, puntos, orden)
-  VALUES (@id_p1, 'Despu�s de comer', 'despues', 100, 2);
-IF NOT EXISTS (SELECT 1 FROM cab.preguntas_opciones WHERE id_pregunta=@id_p1 AND orden=3)
-  INSERT INTO cab.preguntas_opciones (id_pregunta, etiqueta, valor, puntos, orden)
-  VALUES (@id_p1, 'Cuando lo recuerdo', 'recuerdo', 25, 3);
-
-IF NOT EXISTS (SELECT 1 FROM cab.preguntas_opciones WHERE id_pregunta=@id_p2 AND orden=1)
-  INSERT INTO cab.preguntas_opciones (id_pregunta, etiqueta, valor, puntos, orden, condicional, condicional_pregunta_id)
-  VALUES (@id_p2, 'S�', 'si', 100, 1, 1, @id_p3);
-IF NOT EXISTS (SELECT 1 FROM cab.preguntas_opciones WHERE id_pregunta=@id_p2 AND orden=2)
-  INSERT INTO cab.preguntas_opciones (id_pregunta, etiqueta, valor, puntos, orden, condicional, condicional_pregunta_id)
-  VALUES (@id_p2, 'No', 'no', 0, 2, 0, NULL);
-
--- 9.9 Respuesta (boleta) demo
-IF NOT EXISTS (SELECT 1 FROM cab.respuestas WHERE boleta_num = 1)
-  INSERT INTO cab.respuestas (boleta_num, id_encuesta, id_comunidad, id_usuario, estado)
-  VALUES (1, @id_enc, @id_comu, @id_user, 'Enviada');
-
-DECLARE @id_resp BIGINT = (SELECT id_respuesta FROM cab.respuestas WHERE boleta_num = 1);
-
--- 9.10 Respuesta detalle (elige "Despu�s de comer")
-DECLARE @id_opt2 BIGINT = (SELECT id_opcion FROM cab.preguntas_opciones WHERE id_pregunta=@id_p1 AND etiqueta='Despu�s de comer');
-IF NOT EXISTS (SELECT 1 FROM cab.respuestas_detalle WHERE id_respuesta=@id_resp AND id_pregunta=@id_p1)
-  INSERT INTO cab.respuestas_detalle (id_respuesta, id_pregunta, id_opcion, valor_numerico, puntos, puntaje_0a10)
-  VALUES (@id_resp, @id_p1, @id_opt2, NULL, 100, 0.00);  -- el trigger BI ajusta y calcula 0..10
-
-COMMIT;
-GO
-
-
-/* =====================================================================
-   (10) PROBADORES R�PIDOS (opcionales)
-   ===================================================================== */
--- SELECT * FROM cab.vw_respuestas_validas;
--- SELECT * FROM cab.vw_promedio_por_respuesta;
-
-
-
-select * from cab.bitacora_respuestas
+  select * from cab.usuarios

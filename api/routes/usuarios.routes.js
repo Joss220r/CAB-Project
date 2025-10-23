@@ -1,17 +1,119 @@
 
 const { Router } = require('express');
-
-
-const { getUsuarios, createUsuario, updateUsuario, deleteUsuario } = require('../controllers/usuarios.controller');
+const { 
+  getUsuarios, 
+  createUsuario, 
+  updateUsuario, 
+  deleteUsuario,
+  loginUsuario,
+  getProfile,
+  changePassword
+} = require('../controllers/usuarios.controller');
+const { verifyToken, requireAdmin, requireAuthenticatedUser } = require('../middleware/auth');
 
 const router = Router();
 
 /**
  * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Inicia sesión de usuario
+ *     tags: [Autenticación]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               correo:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *             required:
+ *               - correo
+ *               - password
+ *     responses:
+ *       200:
+ *         description: Login exitoso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                 token:
+ *                   type: string
+ *                 usuario:
+ *                   $ref: '#/components/schemas/Usuario'
+ *       401:
+ *         description: Credenciales inválidas
+ */
+router.post('/auth/login', loginUsuario);
+
+/**
+ * @swagger
+ * /auth/profile:
+ *   get:
+ *     summary: Obtiene el perfil del usuario autenticado
+ *     tags: [Autenticación]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Perfil del usuario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 usuario:
+ *                   $ref: '#/components/schemas/Usuario'
+ *       401:
+ *         description: Token inválido o expirado
+ */
+router.get('/auth/profile', verifyToken, getProfile);
+
+/**
+ * @swagger
+ * /auth/change-password:
+ *   put:
+ *     summary: Cambia la contraseña del usuario autenticado
+ *     tags: [Autenticación]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *     responses:
+ *       200:
+ *         description: Contraseña actualizada exitosamente
+ *       401:
+ *         description: Contraseña actual incorrecta
+ */
+router.put('/auth/change-password', verifyToken, changePassword);
+
+/**
+ * @swagger
  * /usuarios:
  *   get:
- *     summary: Obtiene la lista de todos los usuarios
+ *     summary: Obtiene la lista de todos los usuarios (Solo Admin)
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Lista de usuarios
@@ -21,17 +123,23 @@ const router = Router();
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Usuario'
+ *       401:
+ *         description: Token inválido o expirado
+ *       403:
+ *         description: Permisos insuficientes
  *       500:
  *         description: Error en el servidor
  */
-router.get('/usuarios', getUsuarios);
+router.get('/usuarios', verifyToken, requireAdmin, getUsuarios);
 
 /**
  * @swagger
  * /usuarios:
  *   post:
- *     summary: Crea un nuevo usuario
+ *     summary: Crea un nuevo usuario (Solo Admin)
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -43,11 +151,13 @@ router.get('/usuarios', getUsuarios);
  *                 type: string
  *               correo:
  *                 type: string
- *               pass_hash:
+ *                 format: email
+ *               password:
  *                 type: string
- *                 description: 'Contraseña en texto plano (temporalmente)'
+ *                 minLength: 6
  *               rol:
  *                 type: string
+ *                 enum: [Admin, Encuestador]
  *                 example: 'Encuestador'
  *     responses:
  *       201:
@@ -59,14 +169,16 @@ router.get('/usuarios', getUsuarios);
  *       500:
  *         description: Error en el servidor
  */
-router.post('/usuarios', createUsuario);
+router.post('/usuarios', verifyToken, requireAdmin, createUsuario);
 
 /**
  * @swagger
  * /usuarios/{id}:
  *   put:
- *     summary: Actualiza un usuario existente
+ *     summary: Actualiza un usuario existente (Solo Admin)
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -92,14 +204,16 @@ router.post('/usuarios', createUsuario);
  *       500:
  *         description: Error en el servidor
  */
-router.put('/usuarios/:id', updateUsuario);
+router.put('/usuarios/:id', verifyToken, requireAdmin, updateUsuario);
 
 /**
  * @swagger
  * /usuarios/{id}:
  *   delete:
- *     summary: Elimina un usuario
+ *     summary: Elimina un usuario (Solo Admin)
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -115,7 +229,7 @@ router.put('/usuarios/:id', updateUsuario);
  *       500:
  *         description: Error en el servidor
  */
-router.delete('/usuarios/:id', deleteUsuario);
+router.delete('/usuarios/:id', verifyToken, requireAdmin, deleteUsuario);
 
 module.exports = router;
 
