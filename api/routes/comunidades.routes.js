@@ -1,6 +1,6 @@
 
 const { Router } = require('express');
-const { getComunidades } = require('../controllers/comunidades.controller');
+const { getComunidades, getComunidadesByMunicipio } = require('../controllers/comunidades.controller');
 
 const router = Router();
 
@@ -32,5 +32,26 @@ const router = Router();
  *         description: Error en el servidor
  */
 router.get('/comunidades', getComunidades);
+
+/**
+ * @swagger
+ * /comunidades/municipio/{id}:
+ *   get:
+ *     summary: Obtiene las comunidades de un municipio específico
+ *     tags: [Catalogos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID del municipio
+ *     responses:
+ *       200:
+ *         description: Lista de comunidades para el municipio especificado
+ *       500:
+ *         description: Error en el servidor
+ */
+router.get('/comunidades/municipio/:id', getComunidadesByMunicipio);
 
 module.exports = router;

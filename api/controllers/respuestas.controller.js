@@ -3,17 +3,18 @@ const { getConnection } = require('../db');
 const sql = require('mssql');
 
 const createRespuesta = async (req, res) => {
-  const { boleta_num, id_encuesta, id_comunidad, detalles } = req.body;
+  const { boleta_num, id_encuesta, id_comunidad, detalles, respuestas, metadata } = req.body;
 
-  if (!boleta_num || !id_encuesta || !id_comunidad || !detalles || !Array.isArray(detalles)) {
-    return res.status(400).json({ msg: 'Faltan datos requeridos. Se necesita: boleta_num, id_encuesta, id_comunidad y un array de detalles.' });
+  // Aceptar tanto 'detalles' como 'respuestas' para compatibilidad
+  const datosRespuestas = detalles || respuestas;
+
+  if (!boleta_num || !id_encuesta || !id_comunidad || !datosRespuestas || !Array.isArray(datosRespuestas)) {
+    return res.status(400).json({ msg: 'Faltan datos requeridos. Se necesita: boleta_num, id_encuesta, id_comunidad y un array de respuestas/detalles.' });
   }
 
-  // Tomar el usuario autenticado del token, no del body
-  const id_usuario = req.user?.id_usuario;
-  if (!id_usuario) {
-    return res.status(401).json({ msg: 'Usuario no autenticado' });
-  }
+  // Tomar el usuario autenticado del token si existe, sino usar un valor por defecto
+  // Esto permite que tanto usuarios autenticados como no autenticados puedan enviar respuestas
+  const id_usuario = req.user?.id_usuario || null;
 
   const pool = await getConnection();
   const transaction = new sql.Transaction(pool);
@@ -32,7 +33,7 @@ const createRespuesta = async (req, res) => {
     const id_respuesta = respuestaResult.recordset[0].id_respuesta;
 
     // 2. Iterar e insertar cada detalle de la respuesta
-    for (const det of detalles) {
+    for (const det of datosRespuestas) {
       const reqDetalle = new sql.Request(transaction);
       reqDetalle.input('id_respuesta', sql.BigInt, id_respuesta);
       reqDetalle.input('id_pregunta', sql.BigInt, det.id_pregunta);
@@ -63,6 +64,20 @@ const createRespuesta = async (req, res) => {
   }
 };
 
+const generateBoletaNumber = async (req, res) => {
+  try {
+    const pool = await getConnection();
+    const result = await pool.request().query(`
+      SELECT ISNULL(MAX(boleta_num), 0) + 1 as boleta_num 
+      FROM cab.respuestas
+    `);
+    res.json({ boleta_num: result.recordset[0].boleta_num });
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+};
+
 module.exports = {
   createRespuesta,
+  generateBoletaNumber,
 };

@@ -14,6 +14,7 @@ const comunidadesRoutes = require('./routes/comunidades.routes');
 const departamentosRoutes = require('./routes/departamentos.routes');
 const encuestasRoutes = require('./routes/encuestas.routes');
 const municipiosRoutes = require('./routes/municipios.routes');
+const preguntasRoutes = require('./routes/preguntas.routes');
 const respuestasRoutes = require('./routes/respuestas.routes');
 const usuariosRoutes = require('./routes/usuarios.routes');
 
@@ -42,6 +43,7 @@ apiRouter.use(comunidadesRoutes);
 apiRouter.use(departamentosRoutes);
 apiRouter.use(encuestasRoutes);
 apiRouter.use(municipiosRoutes);
+apiRouter.use(preguntasRoutes);
 apiRouter.use(respuestasRoutes);
 apiRouter.use(usuariosRoutes);
 

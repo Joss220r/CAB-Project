@@ -1,6 +1,6 @@
 
 const { Router } = require('express');
-const { createRespuesta } = require('../controllers/respuestas.controller');
+const { createRespuesta, generateBoletaNumber } = require('../controllers/respuestas.controller');
 const { verifyToken, requireAuthenticatedUser } = require('../middleware/auth');
 
 const router = Router();
@@ -30,5 +30,21 @@ const router = Router();
  *         description: Error en el servidor al procesar la transacción
  */
 router.post('/respuestas', createRespuesta);
+
+/**
+ * @swagger
+ * /respuestas/generar-boleta:
+ *   get:
+ *     summary: Genera un número de boleta único
+ *     tags: [Respuestas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Número de boleta generado
+ *       500:
+ *         description: Error en el servidor
+ */
+router.get('/respuestas/generar-boleta', verifyToken, requireAuthenticatedUser, generateBoletaNumber);
 
 module.exports = router;
