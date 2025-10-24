@@ -9,16 +9,18 @@ const createEncuesta = async (req, res) => {
     return res.status(400).json({ msg: 'Faltan datos requeridos. Se necesita: titulo, version, id_grupo_focal y un array de preguntas.' });
   }
 
-  const pool = await getConnection();
-  const transaction = new sql.Transaction(pool);
+  let pool;
+  let transaction;
 
   try {
+    pool = await getConnection();
+    transaction = new sql.Transaction(pool);
     await transaction.begin();
 
     // 1. Insertar la encuesta principal
     const encuestaResult = await new sql.Request(transaction)
       .input('titulo', sql.VarChar, titulo)
-      .input('descripcion', sql.VarChar, descripcion)
+      .input('descripcion', sql.VarChar, descripcion || null)
       .input('id_grupo_focal', sql.TinyInt, id_grupo_focal)
       .input('version', sql.VarChar, version)
       .query('INSERT INTO cab.encuestas (titulo, descripcion, id_grupo_focal, version, estado) VALUES (@titulo, @descripcion, @id_grupo_focal, @version, \'Inactiva\'); SELECT SCOPE_IDENTITY() as id_encuesta;');
@@ -44,10 +46,10 @@ const createEncuesta = async (req, res) => {
             .input('id_pregunta', sql.BigInt, id_pregunta)
             .input('etiqueta', sql.VarChar, opt.etiqueta)
             .input('valor', sql.VarChar, opt.valor)
-            .input('puntos', sql.Int, opt.puntos)
+            .input('puntos', sql.Int, opt.puntos || 0)
             .input('orden', sql.Int, opt.orden)
             .input('condicional', sql.Bit, opt.condicional || 0)
-            .input('condicional_pregunta_id', sql.BigInt, opt.condicional_pregunta_id)
+            .input('condicional_pregunta_id', sql.BigInt, opt.condicional_pregunta_id || null)
             .query('INSERT INTO cab.preguntas_opciones (id_pregunta, etiqueta, valor, puntos, orden, condicional, condicional_pregunta_id) VALUES (@id_pregunta, @etiqueta, @valor, @puntos, @orden, @condicional, @condicional_pregunta_id);');
         }
       }
@@ -57,8 +59,15 @@ const createEncuesta = async (req, res) => {
     res.status(201).json({ id_encuesta, msg: 'Encuesta creada exitosamente con todas sus preguntas y opciones.' });
 
   } catch (err) {
-    await transaction.rollback();
-    res.status(500).send(err.message);
+    console.error('Error al crear encuesta:', err);
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackErr) {
+        console.error('Error al hacer rollback:', rollbackErr);
+      }
+    }
+    res.status(500).json({ msg: 'Error al crear encuesta', error: err.message });
   }
 };
 
@@ -73,17 +82,20 @@ const getEncuestas = async (req, res) => {
         e.descripcion,
         e.version,
         e.estado,
+        e.id_grupo_focal,
         gf.nombre as grupo_focal,
         COUNT(p.id_pregunta) as numero_preguntas
       FROM cab.encuestas e
       LEFT JOIN cab.grupos_focales gf ON e.id_grupo_focal = gf.id_grupo_focal
       LEFT JOIN cab.preguntas p ON e.id_encuesta = p.id_encuesta
       GROUP BY 
-        e.id_encuesta, e.titulo, e.descripcion, e.version, e.estado, gf.nombre
+        e.id_encuesta, e.titulo, e.descripcion, e.version, e.estado, e.id_grupo_focal, gf.nombre
+      ORDER BY e.id_encuesta DESC
     `);
     res.json(result.recordset);
   } catch (error) {
-    res.status(500).send(error.message);
+    console.error('Error al obtener encuestas:', error);
+    res.status(500).json({ msg: 'Error al obtener encuestas', error: error.message });
   }
 };
 
@@ -99,6 +111,7 @@ const getEncuestaById = async (req, res) => {
         e.descripcion,
         e.version,
         e.estado,
+        e.id_grupo_focal,
         (SELECT nombre FROM cab.grupos_focales WHERE id_grupo_focal = e.id_grupo_focal) as grupo_focal,
         (
           SELECT
@@ -144,21 +157,38 @@ const getEncuestaById = async (req, res) => {
 
     // Parsear los strings JSON anidados (si es necesario)
     const encuesta = result.recordset[0];
-    if (encuesta.preguntas && typeof encuesta.preguntas === 'string') {
-      encuesta.preguntas = JSON.parse(encuesta.preguntas);
+    
+    // Manejar caso donde preguntas es null
+    if (encuesta.preguntas === null) {
+      encuesta.preguntas = [];
+    } else if (typeof encuesta.preguntas === 'string') {
+      try {
+        encuesta.preguntas = JSON.parse(encuesta.preguntas);
+      } catch (parseErr) {
+        console.error('Error al parsear preguntas:', parseErr);
+        encuesta.preguntas = [];
+      }
     }
 
     if (encuesta.preguntas && Array.isArray(encuesta.preguntas)) {
       encuesta.preguntas.forEach(p => {
-        if (p.opciones && typeof p.opciones === 'string') {
-          p.opciones = JSON.parse(p.opciones);
+        if (p.opciones === null) {
+          p.opciones = [];
+        } else if (typeof p.opciones === 'string') {
+          try {
+            p.opciones = JSON.parse(p.opciones);
+          } catch (parseErr) {
+            console.error('Error al parsear opciones:', parseErr);
+            p.opciones = [];
+          }
         }
       });
     }
 
     res.json(encuesta);
   } catch (error) {
-    res.status(500).send(error.message);
+    console.error('Error al obtener encuesta por ID:', error);
+    res.status(500).json({ msg: 'Error al obtener encuesta', error: error.message });
   }
 };
 
@@ -183,9 +213,10 @@ const updateEncuestaEstado = async (req, res) => {
       return res.status(404).json({ msg: 'Encuesta no encontrada.' });
     }
 
-    res.json({ id, estado });
+    res.json({ id, estado, msg: 'Estado actualizado exitosamente' });
   } catch (error) {
-    res.status(500).send(error.message);
+    console.error('Error al actualizar estado de encuesta:', error);
+    res.status(500).json({ msg: 'Error al actualizar estado', error: error.message });
   }
 };
 
