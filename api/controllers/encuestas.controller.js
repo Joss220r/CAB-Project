@@ -103,17 +103,27 @@ const getEncuestaById = async (req, res) => {
         (
           SELECT
             p.id_pregunta,
+            p.id_encuesta,
             p.texto,
             p.tipo,
             p.orden,
+            p.requerida,
+            p.descripcion,
+            p.condicional,
+            p.condicional_pregunta_id,
+            p.id_categoria_pregunta,
+            (SELECT nombre FROM cab.categorias_preguntas WHERE id_categoria_pregunta = p.id_categoria_pregunta) as categoria_nombre,
             (SELECT nombre FROM cab.categorias_preguntas WHERE id_categoria_pregunta = p.id_categoria_pregunta) as categoria,
             (
               SELECT
                 po.id_opcion,
+                po.id_pregunta,
                 po.etiqueta,
                 po.valor,
                 po.puntos,
-                po.orden
+                po.orden,
+                po.condicional,
+                po.condicional_pregunta_id
               FROM cab.preguntas_opciones po
               WHERE po.id_pregunta = p.id_pregunta
               ORDER BY po.orden
