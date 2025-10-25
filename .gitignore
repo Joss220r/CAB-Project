@@ -32,6 +32,3 @@ build/
 # Archivos temporales
 *.tmp
 *.temp
-
-# Configuración de Render
-render.yaml
