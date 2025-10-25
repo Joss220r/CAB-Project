@@ -23,7 +23,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Para Render: escuchar en 0.0.0.0
-const host = process.env.HOST || '0.0.0.0';
+//const host = process.env.HOST || '0.0.0.0';
 
 // Middlewares
 app.use(express.json());
@@ -66,10 +66,10 @@ async function startServer() {
   }
   
   // Iniciar el servidor
-  app.listen(port, host, () => {
+  app.listen(port, () => {
     console.log('\n🎉 Servidor CAB API iniciado exitosamente');
-    console.log(`🌐 URL: http://${host}:${port}`);
-    console.log(`📚 Documentación: http://${host}:${port}/api-docs`);
+    console.log(`🌐 URL: http://localhost:${port}`);
+    console.log(`📚 Documentación: http://localhost:${port}/api-docs`);
     console.log(`🔧 Ambiente: ${process.env.NODE_ENV || 'development'}`);
     
     if (dbConnected) {
