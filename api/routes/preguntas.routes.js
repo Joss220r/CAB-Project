@@ -1,9 +1,47 @@
 
 const { Router } = require('express');
-const { getPreguntasByEncuesta, getOpcionesByPregunta } = require('../controllers/preguntas.controller');
+const { getPreguntasByEncuesta, getOpcionesByPregunta, filterPreguntas } = require('../controllers/preguntas.controller');
 const { verifyToken, requireAuthenticatedUser } = require('../middleware/auth');
 
 const router = Router();
+
+/**
+ * @swagger
+ * /preguntas/filter:
+ *   get:
+ *     summary: Filtra preguntas según múltiples criterios
+ *     tags: [Preguntas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: id_encuesta
+ *         schema:
+ *           type: integer
+ *         description: ID de la encuesta
+ *       - in: query
+ *         name: id_categoria
+ *         schema:
+ *           type: integer
+ *         description: ID de la categoría de pregunta
+ *       - in: query
+ *         name: tipo
+ *         schema:
+ *           type: string
+ *           enum: [OpcionUnica, OpcionMultiple, Numerica, SiNo, Fecha, Texto]
+ *         description: Tipo de pregunta
+ *       - in: query
+ *         name: texto
+ *         schema:
+ *           type: string
+ *         description: Búsqueda parcial en el texto de la pregunta
+ *     responses:
+ *       200:
+ *         description: Lista de preguntas filtradas
+ *       500:
+ *         description: Error en el servidor
+ */
+router.get('/preguntas/filter', verifyToken, requireAuthenticatedUser, filterPreguntas);
 
 /**
  * @swagger
