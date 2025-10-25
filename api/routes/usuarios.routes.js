@@ -191,12 +191,32 @@ router.post('/usuarios', verifyToken, requireAdmin, createUsuario);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Usuario'
+ *             type: object
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *               correo:
+ *                 type: string
+ *                 format: email
+ *               rol:
+ *                 type: string
+ *                 enum: [Admin, Encuestador]
+ *               activo:
+ *                 type: boolean
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *                 description: Nueva contraseña (opcional)
+ *             required:
+ *               - nombre
+ *               - correo
+ *               - rol
+ *               - activo
  *     responses:
  *       200:
  *         description: Usuario actualizado exitosamente
  *       400:
- *         description: Faltan datos
+ *         description: Faltan datos o contraseña muy corta
  *       404:
  *         description: Usuario no encontrado
  *       409:

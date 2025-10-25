@@ -66,10 +66,15 @@ const createUsuario = async (req, res) => {
 
 const updateUsuario = async (req, res) => {
   const { id } = req.params;
-  const { nombre, correo, rol, activo } = req.body;
+  const { nombre, correo, rol, activo, password } = req.body;
 
   if (!nombre || !correo || !rol || activo === undefined) {
     return res.status(400).json({ msg: 'Por favor, incluye todos los campos: nombre, correo, rol, activo' });
+  }
+
+  // Validar contraseña si se envía para actualización
+  if (password !== undefined && password.length < 6) {
+    return res.status(400).json({ msg: 'La contraseña debe tener al menos 6 caracteres' });
   }
 
   try {
@@ -85,6 +90,18 @@ const updateUsuario = async (req, res) => {
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ msg: 'Usuario no encontrado.' });
+    }
+
+    // Si se envió nueva contraseña, actualizar pass_hash
+    if (password !== undefined) {
+      const saltRounds = 12;
+      const newPassHash = await bcrypt.hash(password, saltRounds);
+
+      await pool
+        .request()
+        .input('id', sql.BigInt, id)
+        .input('pass_hash', sql.VarChar, newPassHash)
+        .query('UPDATE cab.usuarios SET pass_hash = @pass_hash WHERE id_usuario = @id');
     }
 
     res.json({ id, nombre, correo, rol, activo });
