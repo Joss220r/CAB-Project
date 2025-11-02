@@ -103,9 +103,13 @@ const getEncuestas = async (req, res) => {
 const getEncuestaById = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('[getEncuestaById] Iniciando con ID:', id);
+
     const pool = await getConnection();
+    console.log('[getEncuestaById] Conexión a BD obtenida');
 
     // 1. Obtener datos de la encuesta
+    console.log('[getEncuestaById] Consultando datos de encuesta...');
     const encuestaResult = await pool.request()
       .input('id', sql.BigInt, id)
       .query(`
@@ -124,13 +128,17 @@ const getEncuestaById = async (req, res) => {
         WHERE e.id_encuesta = @id
       `);
 
+    console.log('[getEncuestaById] Encuesta encontrada:', encuestaResult.recordset.length > 0);
+
     if (encuestaResult.recordset.length === 0) {
+      console.log('[getEncuestaById] Encuesta no encontrada');
       return res.status(404).json({ msg: 'Encuesta no encontrada.' });
     }
 
     const encuesta = encuestaResult.recordset[0];
 
     // 2. Obtener preguntas de la encuesta
+    console.log('[getEncuestaById] Consultando preguntas...');
     const preguntasResult = await pool.request()
       .input('id_encuesta', sql.BigInt, id)
       .query(`
@@ -152,7 +160,10 @@ const getEncuestaById = async (req, res) => {
         ORDER BY p.orden
       `);
 
+    console.log('[getEncuestaById] Preguntas encontradas:', preguntasResult.recordset.length);
+
     // 3. Obtener opciones de todas las preguntas
+    console.log('[getEncuestaById] Consultando opciones...');
     const opcionesResult = await pool.request()
       .input('id_encuesta', sql.BigInt, id)
       .query(`
@@ -171,7 +182,10 @@ const getEncuestaById = async (req, res) => {
         ORDER BY po.id_pregunta, po.orden
       `);
 
+    console.log('[getEncuestaById] Opciones encontradas:', opcionesResult.recordset.length);
+
     // 4. Construir el objeto con preguntas y opciones anidadas
+    console.log('[getEncuestaById] Construyendo objeto de respuesta...');
     encuesta.preguntas = preguntasResult.recordset.map(pregunta => {
       // Filtrar las opciones que pertenecen a esta pregunta
       const opcionesDePregunta = opcionesResult.recordset.filter(
@@ -184,10 +198,21 @@ const getEncuestaById = async (req, res) => {
       };
     });
 
+    console.log('[getEncuestaById] Enviando respuesta exitosa');
     res.json(encuesta);
   } catch (error) {
-    console.error('Error al obtener encuesta por ID:', error);
-    console.error('Stack:', error.stack);
+    console.error('[getEncuestaById] ERROR:', error);
+    console.error('[getEncuestaById] Stack:', error.stack);
+    console.error('[getEncuestaById] Detalles:', {
+      message: error.message,
+      code: error.code,
+      number: error.number,
+      state: error.state,
+      class: error.class,
+      serverName: error.serverName,
+      procName: error.procName,
+      lineNumber: error.lineNumber
+    });
     res.status(500).json({ msg: 'Error al obtener encuesta', error: error.message });
   }
 };
