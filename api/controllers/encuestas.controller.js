@@ -104,90 +104,90 @@ const getEncuestaById = async (req, res) => {
   try {
     const { id } = req.params;
     const pool = await getConnection();
-    const result = await pool.request().input('id', sql.BigInt, id).query(`
-      SELECT 
-        e.id_encuesta,
-        e.titulo,
-        e.descripcion,
-        e.version,
-        e.estado,
-        e.id_grupo_focal,
-        (SELECT nombre FROM cab.grupos_focales WHERE id_grupo_focal = e.id_grupo_focal) as grupo_focal,
-        (
-          SELECT
-            p.id_pregunta,
-            p.id_encuesta,
-            p.texto,
-            p.tipo,
-            p.orden,
-            p.requerida,
-            p.descripcion,
-            p.condicional,
-            p.condicional_pregunta_id,
-            p.id_categoria_pregunta,
-            (SELECT nombre FROM cab.categorias_preguntas WHERE id_categoria_pregunta = p.id_categoria_pregunta) as categoria_nombre,
-            (SELECT nombre FROM cab.categorias_preguntas WHERE id_categoria_pregunta = p.id_categoria_pregunta) as categoria,
-            (
-              SELECT
-                po.id_opcion,
-                po.id_pregunta,
-                po.etiqueta,
-                po.valor,
-                po.puntos,
-                po.orden,
-                po.condicional,
-                po.condicional_pregunta_id
-              FROM cab.preguntas_opciones po
-              WHERE po.id_pregunta = p.id_pregunta
-              ORDER BY po.orden
-              FOR JSON PATH
-            ) as opciones
-          FROM cab.preguntas p
-          WHERE p.id_encuesta = e.id_encuesta
-          ORDER BY p.orden
-          FOR JSON PATH
-        ) as preguntas
-      FROM cab.encuestas e
-      WHERE e.id_encuesta = @id
-    `);
 
-    if (result.recordset.length === 0) {
+    // 1. Obtener datos de la encuesta
+    const encuestaResult = await pool.request()
+      .input('id', sql.BigInt, id)
+      .query(`
+        SELECT
+          e.id_encuesta,
+          e.titulo,
+          e.descripcion,
+          e.version,
+          e.estado,
+          e.vigente_desde,
+          e.vigente_hasta,
+          e.id_grupo_focal,
+          gf.nombre as grupo_focal
+        FROM cab.encuestas e
+        LEFT JOIN cab.grupos_focales gf ON e.id_grupo_focal = gf.id_grupo_focal
+        WHERE e.id_encuesta = @id
+      `);
+
+    if (encuestaResult.recordset.length === 0) {
       return res.status(404).json({ msg: 'Encuesta no encontrada.' });
     }
 
-    // Parsear los strings JSON anidados (si es necesario)
-    const encuesta = result.recordset[0];
-    
-    // Manejar caso donde preguntas es null
-    if (encuesta.preguntas === null) {
-      encuesta.preguntas = [];
-    } else if (typeof encuesta.preguntas === 'string') {
-      try {
-        encuesta.preguntas = JSON.parse(encuesta.preguntas);
-      } catch (parseErr) {
-        console.error('Error al parsear preguntas:', parseErr);
-        encuesta.preguntas = [];
-      }
-    }
+    const encuesta = encuestaResult.recordset[0];
 
-    if (encuesta.preguntas && Array.isArray(encuesta.preguntas)) {
-      encuesta.preguntas.forEach(p => {
-        if (p.opciones === null) {
-          p.opciones = [];
-        } else if (typeof p.opciones === 'string') {
-          try {
-            p.opciones = JSON.parse(p.opciones);
-          } catch (parseErr) {
-            console.error('Error al parsear opciones:', parseErr);
-            p.opciones = [];
-          }
-        }
-      });
-    }
+    // 2. Obtener preguntas de la encuesta
+    const preguntasResult = await pool.request()
+      .input('id_encuesta', sql.BigInt, id)
+      .query(`
+        SELECT
+          p.id_pregunta,
+          p.id_encuesta,
+          p.texto,
+          p.tipo,
+          p.orden,
+          p.requerida,
+          p.descripcion,
+          p.condicional,
+          p.condicional_pregunta_id,
+          p.id_categoria_pregunta,
+          cp.nombre as categoria_nombre
+        FROM cab.preguntas p
+        LEFT JOIN cab.categorias_preguntas cp ON p.id_categoria_pregunta = cp.id_categoria_pregunta
+        WHERE p.id_encuesta = @id_encuesta
+        ORDER BY p.orden
+      `);
+
+    // 3. Obtener opciones de todas las preguntas
+    const opcionesResult = await pool.request()
+      .input('id_encuesta', sql.BigInt, id)
+      .query(`
+        SELECT
+          po.id_opcion,
+          po.id_pregunta,
+          po.etiqueta,
+          po.valor,
+          po.puntos,
+          po.orden,
+          po.condicional,
+          po.condicional_pregunta_id
+        FROM cab.preguntas_opciones po
+        INNER JOIN cab.preguntas p ON po.id_pregunta = p.id_pregunta
+        WHERE p.id_encuesta = @id_encuesta
+        ORDER BY po.id_pregunta, po.orden
+      `);
+
+    // 4. Construir el objeto con preguntas y opciones anidadas
+    encuesta.preguntas = preguntasResult.recordset.map(pregunta => {
+      // Filtrar las opciones que pertenecen a esta pregunta
+      const opcionesDePregunta = opcionesResult.recordset.filter(
+        op => op.id_pregunta === pregunta.id_pregunta
+      );
+
+      return {
+        ...pregunta,
+        opciones: opcionesDePregunta
+      };
+    });
 
     res.json(encuesta);
   } catch (error) {
     console.error('Error al obtener encuesta por ID:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({ msg: 'Error al obtener encuesta', error: error.message });
   }
 };
