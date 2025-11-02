@@ -234,14 +234,14 @@ const getEncuestasActivas = async (req, res) => {
         e.vigente_hasta,
         e.id_grupo_focal,
         gf.nombre as grupo_focal,
-        COUNT(p.id_pregunta) as preguntas_count
+        (
+          SELECT COUNT(*)
+          FROM cab.preguntas p
+          WHERE p.id_encuesta = e.id_encuesta
+        ) as preguntas_count
       FROM cab.encuestas e
       LEFT JOIN cab.grupos_focales gf ON e.id_grupo_focal = gf.id_grupo_focal
-      LEFT JOIN cab.preguntas p ON e.id_encuesta = p.id_encuesta
       WHERE e.estado = 'Activa'
-      GROUP BY
-        e.id_encuesta, e.titulo, e.descripcion, e.version, e.estado,
-        e.vigente_desde, e.vigente_hasta, e.id_grupo_focal, gf.nombre
       ORDER BY e.id_encuesta DESC
     `);
     res.json(result.recordset);
