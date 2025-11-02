@@ -220,11 +220,43 @@ const updateEncuestaEstado = async (req, res) => {
   }
 };
 
+const getEncuestasActivas = async (req, res) => {
+  try {
+    const pool = await getConnection();
+    const result = await pool.request().query(`
+      SELECT
+        e.id_encuesta,
+        e.titulo,
+        e.descripcion,
+        e.version,
+        e.estado,
+        e.vigente_desde,
+        e.vigente_hasta,
+        e.id_grupo_focal,
+        gf.nombre as grupo_focal,
+        COUNT(p.id_pregunta) as preguntas_count
+      FROM cab.encuestas e
+      LEFT JOIN cab.grupos_focales gf ON e.id_grupo_focal = gf.id_grupo_focal
+      LEFT JOIN cab.preguntas p ON e.id_encuesta = p.id_encuesta
+      WHERE e.estado = 'Activa'
+      GROUP BY
+        e.id_encuesta, e.titulo, e.descripcion, e.version, e.estado,
+        e.vigente_desde, e.vigente_hasta, e.id_grupo_focal, gf.nombre
+      ORDER BY e.id_encuesta DESC
+    `);
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error al obtener encuestas activas:', error);
+    res.status(500).json({ msg: 'Error al obtener encuestas activas', error: error.message });
+  }
+};
+
 module.exports = {
   createEncuesta,
   getEncuestas,
   getEncuestaById,
   updateEncuestaEstado,
+  getEncuestasActivas,
 };
 
 

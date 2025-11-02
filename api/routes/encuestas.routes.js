@@ -1,6 +1,6 @@
 
 const { Router } = require('express');
-const { createEncuesta, getEncuestas, getEncuestaById, updateEncuestaEstado } = require('../controllers/encuestas.controller');
+const { createEncuesta, getEncuestas, getEncuestaById, updateEncuestaEstado, getEncuestasActivas } = require('../controllers/encuestas.controller');
 const { verifyToken, requireAdmin, requireAuthenticatedUser } = require('../middleware/auth');
 
 const router = Router();
@@ -18,6 +18,22 @@ const router = Router();
  *         description: Error en el servidor
  */
 router.get('/encuestas', verifyToken, requireAuthenticatedUser, getEncuestas);
+
+/**
+ * @swagger
+ * /encuestas/activas:
+ *   get:
+ *     summary: Obtiene una lista de encuestas con estado 'Activa'
+ *     tags: [Encuestas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de encuestas activas disponibles para llenar.
+ *       500:
+ *         description: Error en el servidor
+ */
+router.get('/encuestas/activas', verifyToken, requireAuthenticatedUser, getEncuestasActivas);
 
 /**
  * @swagger
