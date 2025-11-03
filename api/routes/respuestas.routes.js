@@ -1,9 +1,25 @@
 
 const { Router } = require('express');
-const { createRespuesta, generateBoletaNumber } = require('../controllers/respuestas.controller');
+const { createRespuesta, generateBoletaNumber, getAllRespuestas } = require('../controllers/respuestas.controller');
 const { verifyToken, requireAuthenticatedUser } = require('../middleware/auth');
 
 const router = Router();
+
+/**
+ * @swagger
+ * /respuestas:
+ *   get:
+ *     summary: Obtiene todas las respuestas de encuestas con sus detalles
+ *     tags: [Respuestas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de respuestas obtenida exitosamente
+ *       500:
+ *         description: Error en el servidor
+ */
+router.get('/respuestas', verifyToken, requireAuthenticatedUser, getAllRespuestas);
 
 /**
  * @swagger
@@ -29,7 +45,7 @@ const router = Router();
  *       500:
  *         description: Error en el servidor al procesar la transacción
  */
-router.post('/respuestas', createRespuesta);
+router.post('/respuestas', verifyToken, requireAuthenticatedUser, createRespuesta);
 
 /**
  * @swagger
