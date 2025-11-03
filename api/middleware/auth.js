@@ -8,17 +8,18 @@ const JWT_EXPIRES_IN = '12h'; // 12 horas de duración
 
 /**
  * Genera un token JWT para un usuario
- * @param {Object} user - Objeto usuario con id_usuario, correo, rol
+ * @param {Object} user - Objeto usuario con id_usuario, nombre, correo, rol
  * @returns {string} Token JWT
  */
 const generateToken = (user) => {
   const payload = {
     id: user.id_usuario,
+    nombre: user.nombre,
     correo: user.correo,
     rol: user.rol
   };
-  
-  return jwt.sign(payload, JWT_SECRET, { 
+
+  return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
     issuer: 'CAB-API',
     audience: 'CAB-CLIENT'
