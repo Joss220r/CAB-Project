@@ -149,9 +149,7 @@ const getEncuestaById = async (req, res) => {
           p.tipo,
           p.orden,
           p.requerida,
-          p.descripcion,
-          p.condicional,
-          p.condicional_pregunta_id,
+          p.puntaje_maximo,
           p.id_categoria_pregunta,
           cp.nombre as categoria_nombre
         FROM cab.preguntas p

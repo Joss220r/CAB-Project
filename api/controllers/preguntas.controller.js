@@ -10,16 +10,14 @@ const getPreguntasByEncuesta = async (req, res) => {
       .request()
       .input('id_encuesta', sql.BigInt, id)
       .query(`
-        SELECT 
+        SELECT
           p.id_pregunta,
           p.id_encuesta,
           p.texto,
           p.tipo,
           p.orden,
           p.requerida,
-          p.descripcion,
-          p.condicional,
-          p.condicional_pregunta_id,
+          p.puntaje_maximo,
           cp.nombre as categoria_nombre,
           p.id_categoria_pregunta
         FROM cab.preguntas p
