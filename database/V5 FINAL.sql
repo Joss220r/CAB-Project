@@ -2,20 +2,6 @@
    DB_CAB · Esquema de Encuestas 
    ===================================================================== */
 
--- (1) RESETEO SEGURO (opcional): Elimina y crea limpia la BD
-IF DB_ID('DB_CAB') IS NOT NULL
-BEGIN
-  ALTER DATABASE DB_CAB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-  DROP DATABASE DB_CAB;
-END
-GO
-
-CREATE DATABASE DB_CAB;
-GO
-
-USE DB_CAB;
-GO
-
 /* =====================================================================
    (2) ESQUEMA
    ===================================================================== */
